@@ -1,0 +1,71 @@
+from flask import Flask, request, send_from_directory, render_template_string, redirect, url_for
+import os
+
+app = Flask(__name__)
+UPLOAD_FOLDER = '/uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+HTML = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Archivos cargados</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        table { border-collapse: collapse; width: 60%; }
+        th, td { padding: 8px 12px; border-bottom: 1px solid #ddd; }
+        th { background: #f4f4f4; }
+        td.actions { text-align: right; }
+        button { margin-left: 8px; }
+    </style>
+</head>
+<body>
+    <h2>Archivos cargados</h2>
+    <table>
+        <tr><th>Archivo</th><th class="actions">Acciones</th></tr>
+        {% for file in files %}
+        <tr>
+            <td>{{ file }}</td>
+            <td class="actions">
+                <a href="{{ url_for('download_file', filename=file) }}"><button>Download</button></a>
+                <form method="POST" action="{{ url_for('delete_file', filename=file) }}" style="display:inline;">
+                    <button type="submit" onclick="return confirm('¿Borrar {{file}}?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
+"""
+
+@app.route('/')
+def index():
+    files = os.listdir(UPLOAD_FOLDER)
+    return render_template_string(HTML, files=files)
+
+@app.route('/download/<filename>')
+def download_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
+
+@app.route('/delete/<filename>', methods=['POST'])
+def delete_file(filename):
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    if os.path.exists(path):
+        os.remove(path)
+    return redirect(url_for('index'))
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return 'No file part', 400
+    file = request.files['file']
+    if file.filename == '':
+        return 'No selected file', 400
+    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(filepath)
+    return 'File uploaded successfully', 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
