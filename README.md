@@ -2,10 +2,27 @@
 endpoint para hacer un CURL POST
 
 # Docker Build
-docker build -t file-receiver .
+docker build -t file-receiver:latest .
 
-# Docker compose
-docker run -d -p 5000:5000 -v /ruta/real/uploads:/uploads file-receiver
+# docker-compose: file-transfer
+services:
+  file-receiver:
+    container_name: file-transfer
+    image: file-receiver:latest
+    networks: 
+      front-net:
+        ipv4_address: 172.21.0.
+    ports:
+      - 9000:5000
+    volumes:
+      - /mnt/hdd-erf/config/file-transfer:/uploads
+    restart: unless-stopped
+    environment:
+      - ENV=production
+
+networks:
+  front-net:
+    external: true
 
 
 # Curl para windows
