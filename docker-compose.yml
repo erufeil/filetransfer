@@ -1,0 +1,18 @@
+services:
+  file-receiver:
+    container_name: file-transfer
+    image: file-receiver:latest
+    networks:
+      front-net:
+        ipv4_address: 172.21.0.10
+    ports:
+      - 9000:5000
+    volumes:
+      - /mnt/hdd-erf/config/file-transfer:/uploads
+    restart: unless-stopped
+    environment:
+      - ENV=production
+
+networks:
+  front-net:
+    external: true

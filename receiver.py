@@ -3,8 +3,24 @@ import os
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-UPLOAD_FOLDER = '/uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Detecta si está en Docker (usando variable de entorno o existencia de /uploads)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Si existe /uploads (volumen de Docker), usar esa ruta
+# Si no, usar ./uploads (desarrollo local)
+if os.path.exists('/uploads') and os.environ.get('ENV') == 'production':
+    UPLOAD_FOLDER = '/uploads'
+else:
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+    # Crea el directorio si no existe (solo en desarrollo local)
+    try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    except PermissionError:
+        print(f"Error: No se tienen permisos para crear {UPLOAD_FOLDER}")
+        exit(1)
+
+print(f"Usando UPLOAD_FOLDER: {UPLOAD_FOLDER}")
 
 def validate_filename(filename):
     """Valida que el filename no contenga path traversal attacks"""
@@ -26,12 +42,16 @@ def validate_filename(filename):
 
 @app.route('/')
 def index():
-    return send_from_directory('.', 'index.html')
+    # Usa BASE_DIR para asegurar que encuentra el archivo
+    return send_from_directory(BASE_DIR, 'index.html')
 
 @app.route('/files')
 def list_files():
-    files = os.listdir(UPLOAD_FOLDER)
-    return {'files': files}, 200
+    try:
+        files = os.listdir(UPLOAD_FOLDER)
+        return {'files': files}, 200
+    except Exception as e:
+        return {'error': str(e), 'files': []}, 500
 
 @app.route('/download/<filename>')
 def download_file(filename):
